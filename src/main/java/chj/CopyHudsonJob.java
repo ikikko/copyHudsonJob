@@ -11,7 +11,7 @@ import org.kohsuke.args4j.Option;
 
 public class CopyHudsonJob {
 
-	@Option(name = "-u", metaVar = "URL", usage = "count number")
+	@Option(name = "-u", metaVar = "URL", usage = "HudsonのURL")
 	static String url = "http://192.168.233.131/hudson/";
 	@Option(name = "-s", metaVar = "src", usage = "コピー元ジョブ")
 	static String src = "templateJob";
@@ -19,7 +19,6 @@ public class CopyHudsonJob {
 	static String dst;
 
 	public static void main(String[] args) throws Exception {
-
 		// コマンドライン引数のパース
 		CmdLineParser parser = new CmdLineParser(new CopyHudsonJob());
 		try {
@@ -35,7 +34,8 @@ public class CopyHudsonJob {
 
 		// Jobのコピー
 		CLI cli = new CLI(new URL(url));
-		cli.execute("copy-job", "helloUbuntuHudson", "helloCliHudson");
+		cli.execute("copy-job", src, dst);
 		cli.close();
 	}
+
 }
