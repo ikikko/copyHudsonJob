@@ -4,6 +4,11 @@ import hudson.cli.CLI;
 
 import java.net.URL;
 
+import org.apache.http.HttpResponse;
+import org.apache.http.client.HttpClient;
+import org.apache.http.client.methods.HttpGet;
+import org.apache.http.impl.client.DefaultHttpClient;
+import org.apache.http.util.EntityUtils;
 import org.kohsuke.args4j.CmdLineException;
 import org.kohsuke.args4j.CmdLineParser;
 import org.kohsuke.args4j.ExampleMode;
@@ -33,9 +38,21 @@ public class CopyHudsonJob {
 		}
 
 		// Jobのコピー
+		// TODO 既に存在する場合はエラーにする
 		CLI cli = new CLI(new URL(url));
 		cli.execute("copy-job", src, dst);
 		cli.close();
+
+		// HttpClientの設定
+		String configXmlUrl = url + "job" + "/" + dst + "/" + "config.xml";
+		HttpClient client = new DefaultHttpClient();
+
+		// config.xmlの取得
+		HttpGet get = new HttpGet(configXmlUrl);
+		HttpResponse response = client.execute(get);
+		String configXml = EntityUtils.toString(response.getEntity());
+
+		System.out.println(configXml);
 	}
 
 }
