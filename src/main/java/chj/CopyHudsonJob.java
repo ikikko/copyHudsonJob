@@ -11,8 +11,10 @@ import org.apache.http.client.HttpClient;
 import org.apache.http.client.entity.UrlEncodedFormEntity;
 import org.apache.http.client.methods.HttpGet;
 import org.apache.http.client.methods.HttpPost;
+import org.apache.http.entity.StringEntity;
 import org.apache.http.impl.client.DefaultHttpClient;
 import org.apache.http.message.BasicNameValuePair;
+import org.apache.http.protocol.HTTP;
 import org.apache.http.util.EntityUtils;
 import org.kohsuke.args4j.CmdLineException;
 import org.kohsuke.args4j.CmdLineParser;
@@ -91,10 +93,20 @@ public class CopyHudsonJob {
 	private static void replaceJobSetting(String dst) throws Exception {
 		String requestUrl = hudsonUrl + "job" + "/" + dst + "/" + "config.xml";
 
-		HttpGet request = new HttpGet(requestUrl);
-		HttpResponse response = client.execute(request);
-		String configXml = EntityUtils.toString(response.getEntity());
-		response.getEntity().consumeContent();
-	}
+		HttpGet getRequest = new HttpGet(requestUrl);
+		HttpResponse getResponse = client.execute(getRequest);
+		String config = EntityUtils.toString(getResponse.getEntity());
+		getResponse.getEntity().consumeContent();
 
+		String replacedConfig = config.replaceAll("%PROJECT%", dst);
+		List<NameValuePair> params = new ArrayList<NameValuePair>();
+		params.add(new BasicNameValuePair("config.xml", replacedConfig));
+
+		HttpPost postRequest = new HttpPost(requestUrl);
+		postRequest.setEntity(new StringEntity(replacedConfig, HTTP.UTF_8));
+		HttpResponse postResponse = client.execute(postRequest);
+		postResponse.getEntity().consumeContent();
+
+		System.out.println("replace job setting [" + dst + "]");
+	}
 }
