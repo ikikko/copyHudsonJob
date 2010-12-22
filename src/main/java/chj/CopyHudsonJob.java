@@ -23,19 +23,44 @@ import org.kohsuke.args4j.Option;
 
 public class CopyHudsonJob {
 
-	@Option(name = "-u", metaVar = "URL", usage = "HudsonのURL")
-	static String hudsonUrl = "http://192.168.233.131/hudson/";
-	@Option(name = "-s", metaVar = "src", usage = "コピー元ジョブ")
-	static String src = "templateJob";
-	@Option(name = "-d", metaVar = "dst", usage = "コピー先ジョブ", required = true)
-	static String dst;
+	/** 置換文字列 */
+	private static final String REPLACE_STRING = "%PROJECT%";
 
-	private static HttpClient client;
+	@Option(name = "-u", metaVar = "URL", usage = "HudsonのURL")
+	private static String hudsonUrl = "http://192.168.233.131/hudson/";
+	@Option(name = "-s", metaVar = "srcJob", usage = "コピー元ジョブ")
+	private static String srcJob = "templateJob";
+	@Option(name = "-d", metaVar = "dstJob", usage = "コピー先ジョブ", required = true)
+	private static String dstJob;
+
+	private HttpClient client;
 
 	public static void main(String[] args) throws Exception {
-		// コマンドライン引数のパース
-		// TODO コマンドラインからじゃなく、標準入力から受け取った方が楽かも
+		new CopyHudsonJob().run(args);
+	}
+
+	public void run(String[] args) throws Exception {
+		// 引数のパース
+		parseArgs(args);
+
+		// Hudson APIの実行
+		client = new DefaultHttpClient();
+		copyJob(srcJob, dstJob);
+		enabledJob(dstJob);
+		replaceJobSetting(dstJob);
+		client.getConnectionManager().shutdown();
+
+		// ブラウザオープン
+		Desktop.getDesktop().browse(
+				new URI(hudsonUrl + "job" + "/" + dstJob + "/"));
+	}
+
+	/**
+	 * コマンドライン引数をパースする。
+	 */
+	private void parseArgs(String[] args) {
 		CmdLineParser parser = new CmdLineParser(new CopyHudsonJob());
+
 		try {
 			parser.parseArgument(args);
 		} catch (CmdLineException e) {
@@ -46,59 +71,52 @@ public class CopyHudsonJob {
 
 			System.exit(1);
 		}
-
-		client = new DefaultHttpClient();
-		copyJob(src, dst);
-		enabledJob();
-		replaceJobSetting(dst);
-		client.getConnectionManager().shutdown();
-
-		Desktop.getDesktop().browse(
-				new URI(hudsonUrl + "job" + "/" + dst + "/"));
 	}
 
 	/**
 	 * ジョブをコピーする。
 	 */
-	private static void copyJob(String src, String dst) throws Exception {
+	private void copyJob(String srcJob, String dstJob) throws Exception {
 		// TODO 既に存在する場合はエラーにする
 		String requestUrl = hudsonUrl + "createItem";
 		List<NameValuePair> params = new ArrayList<NameValuePair>();
-		params.add(new BasicNameValuePair("name", dst));
+		params.add(new BasicNameValuePair("name", dstJob));
 		params.add(new BasicNameValuePair("mode", "copy"));
-		params.add(new BasicNameValuePair("from", src));
+		params.add(new BasicNameValuePair("from", srcJob));
 
 		HttpPost ｒequest = new HttpPost(requestUrl);
 		ｒequest.setEntity(new UrlEncodedFormEntity(params));
 		client.execute(ｒequest).getEntity().consumeContent();
 
-		System.out.println("copy job from [" + src + "] to [" + dst + "]");
+		System.out
+				.println("copy job from [" + srcJob + "] to [" + dstJob + "]");
 	}
 
 	/**
 	 * ジョブを有効化する。
 	 */
-	private static void enabledJob() throws Exception {
-		String requestUrl = hudsonUrl + "job" + "/" + dst + "/" + "enable";
+	private void enabledJob(String dstJob) throws Exception {
+		String requestUrl = hudsonUrl + "job" + "/" + dstJob + "/" + "enable";
 
 		HttpPost request = new HttpPost(requestUrl);
 		client.execute(request).getEntity().consumeContent();
 
-		System.out.println("enable job [" + dst + "]");
+		System.out.println("enable job [" + dstJob + "]");
 	}
 
 	/**
 	 * ジョブの設定内容を置き換える。
 	 */
-	private static void replaceJobSetting(String dst) throws Exception {
-		String requestUrl = hudsonUrl + "job" + "/" + dst + "/" + "config.xml";
+	private void replaceJobSetting(String dstJob) throws Exception {
+		String requestUrl = hudsonUrl + "job" + "/" + dstJob + "/"
+				+ "config.xml";
 
 		HttpGet getRequest = new HttpGet(requestUrl);
 		HttpResponse getResponse = client.execute(getRequest);
 		String config = EntityUtils.toString(getResponse.getEntity());
 		getResponse.getEntity().consumeContent();
 
-		String replacedConfig = config.replaceAll("%PROJECT%", dst);
+		String replacedConfig = config.replaceAll(REPLACE_STRING, dstJob);
 		List<NameValuePair> params = new ArrayList<NameValuePair>();
 		params.add(new BasicNameValuePair("config.xml", replacedConfig));
 
@@ -107,6 +125,6 @@ public class CopyHudsonJob {
 		HttpResponse postResponse = client.execute(postRequest);
 		postResponse.getEntity().consumeContent();
 
-		System.out.println("replace job setting [" + dst + "]");
+		System.out.println("replace job setting [" + dstJob + "]");
 	}
 }
