@@ -4,6 +4,7 @@ import java.awt.Desktop;
 import java.net.URI;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.logging.Logger;
 
 import org.apache.http.HttpResponse;
 import org.apache.http.NameValuePair;
@@ -46,7 +47,7 @@ public class CopyHudsonJob {
 		// Hudson APIの実行
 		client = new DefaultHttpClient();
 		copyJob(srcJob, dstJob);
-		enabledJob(dstJob);
+		enableJob(dstJob);
 		replaceJobSetting(dstJob);
 		client.getConnectionManager().shutdown();
 
@@ -77,16 +78,29 @@ public class CopyHudsonJob {
 	 * ジョブをコピーする。
 	 */
 	private void copyJob(String srcJob, String dstJob) throws Exception {
-		// TODO 既に存在する場合はエラーにする
+		// TODO Loggerに入れ替える
+		Logger.getLogger(Logger.GLOBAL_LOGGER_NAME).info("start copyJob");
+
+		// リクエスト構築
 		String requestUrl = hudsonUrl + "createItem";
 		List<NameValuePair> params = new ArrayList<NameValuePair>();
 		params.add(new BasicNameValuePair("name", dstJob));
 		params.add(new BasicNameValuePair("mode", "copy"));
 		params.add(new BasicNameValuePair("from", srcJob));
 
+		// リクエスト送信
 		HttpPost ｒequest = new HttpPost(requestUrl);
 		ｒequest.setEntity(new UrlEncodedFormEntity(params));
-		client.execute(ｒequest).getEntity().consumeContent();
+		HttpResponse response = client.execute(ｒequest);
+		System.out.println(response.getStatusLine());
+		String statusCode = String.valueOf(response.getStatusLine()
+				.getStatusCode());
+		response.getEntity().consumeContent();
+
+		// ステータスコードが"4xx"or"5xx"ならば、終了
+		if (statusCode.startsWith("4") || statusCode.startsWith("5")) {
+			System.exit(1);
+		}
 
 		System.out
 				.println("copy job from [" + srcJob + "] to [" + dstJob + "]");
@@ -95,11 +109,15 @@ public class CopyHudsonJob {
 	/**
 	 * ジョブを有効化する。
 	 */
-	private void enabledJob(String dstJob) throws Exception {
+	private void enableJob(String dstJob) throws Exception {
+		// リクエスト構築
 		String requestUrl = hudsonUrl + "job" + "/" + dstJob + "/" + "enable";
 
+		// リクエスト送信
 		HttpPost request = new HttpPost(requestUrl);
-		client.execute(request).getEntity().consumeContent();
+		HttpResponse response = client.execute(request);
+		System.out.println(response.getStatusLine());
+		response.getEntity().consumeContent();
 
 		System.out.println("enable job [" + dstJob + "]");
 	}
@@ -108,18 +126,19 @@ public class CopyHudsonJob {
 	 * ジョブの設定内容を置き換える。
 	 */
 	private void replaceJobSetting(String dstJob) throws Exception {
+		// Getリクエスト構築
 		String requestUrl = hudsonUrl + "job" + "/" + dstJob + "/"
 				+ "config.xml";
 
+		// Getリクエスト送信
 		HttpGet getRequest = new HttpGet(requestUrl);
 		HttpResponse getResponse = client.execute(getRequest);
 		String config = EntityUtils.toString(getResponse.getEntity());
 		getResponse.getEntity().consumeContent();
 
 		String replacedConfig = config.replaceAll(REPLACE_STRING, dstJob);
-		List<NameValuePair> params = new ArrayList<NameValuePair>();
-		params.add(new BasicNameValuePair("config.xml", replacedConfig));
 
+		// Postリクエスト送信
 		HttpPost postRequest = new HttpPost(requestUrl);
 		postRequest.setEntity(new StringEntity(replacedConfig, HTTP.UTF_8));
 		HttpResponse postResponse = client.execute(postRequest);
