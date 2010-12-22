@@ -2,11 +2,14 @@ package chj;
 
 import hudson.cli.CLI;
 
+import java.awt.Desktop;
+import java.net.URI;
 import java.net.URL;
 
 import org.apache.http.HttpResponse;
 import org.apache.http.client.HttpClient;
 import org.apache.http.client.methods.HttpGet;
+import org.apache.http.client.methods.HttpPost;
 import org.apache.http.impl.client.DefaultHttpClient;
 import org.apache.http.util.EntityUtils;
 import org.kohsuke.args4j.CmdLineException;
@@ -25,6 +28,7 @@ public class CopyHudsonJob {
 
 	public static void main(String[] args) throws Exception {
 		// コマンドライン引数のパース
+		// TODO コマンドラインからじゃなく、標準入力から受け取った方が楽かも
 		CmdLineParser parser = new CmdLineParser(new CopyHudsonJob());
 		try {
 			parser.parseArgument(args);
@@ -44,15 +48,21 @@ public class CopyHudsonJob {
 		cli.close();
 
 		// HttpClientの設定
-		String configXmlUrl = url + "job" + "/" + dst + "/" + "config.xml";
+		String jobUrl = url + "job" + "/" + dst + "/";
 		HttpClient client = new DefaultHttpClient();
 
 		// config.xmlの取得
-		HttpGet get = new HttpGet(configXmlUrl);
-		HttpResponse response = client.execute(get);
-		String configXml = EntityUtils.toString(response.getEntity());
+		String configXmlUrl = jobUrl + "config.xml";
+		HttpGet configXmlRequest = new HttpGet(configXmlUrl);
+		HttpResponse configXmlResponse = client.execute(configXmlRequest);
+		String configXml = EntityUtils.toString(configXmlResponse.getEntity());
 
-		System.out.println(configXml);
+		// ジョブの有効化
+		String enableUrl = jobUrl + "enable";
+		HttpPost enableRequest = new HttpPost(enableUrl);
+		client.execute(enableRequest);
+
+		// ジョブのWebページを開く
+		Desktop.getDesktop().browse(new URI(jobUrl));
 	}
-
 }
