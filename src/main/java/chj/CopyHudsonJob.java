@@ -82,6 +82,8 @@ public class CopyHudsonJob {
 	 * ジョブをコピーする。
 	 */
 	private void copyJob(String srcJob, String dstJob) throws Exception {
+		LOGGER.info("[start] copyJob");
+
 		// リクエスト構築
 		String requestUrl = hudsonUrl + "createItem";
 		List<NameValuePair> params = new ArrayList<NameValuePair>();
@@ -103,14 +105,18 @@ public class CopyHudsonJob {
 			System.exit(1);
 		}
 		LOGGER.info(statusLine);
-		LOGGER.info("copy job from [" + srcJob + "] to [" + dstJob + "]");
+		LOGGER.info("copy job from '" + srcJob + "' to '" + dstJob + "'");
 		response.getEntity().consumeContent();
+
+		LOGGER.info("[ end ] copyJob");
 	}
 
 	/**
 	 * ジョブを有効化する。
 	 */
 	private void enableJob(String dstJob) throws Exception {
+		LOGGER.info("[start] enableJob");
+
 		// リクエスト送信
 		String requestUrl = hudsonUrl + "job" + "/" + dstJob + "/" + "enable";
 		HttpPost request = new HttpPost(requestUrl);
@@ -118,14 +124,18 @@ public class CopyHudsonJob {
 
 		// レスポンス取得
 		LOGGER.info(response.getStatusLine());
-		LOGGER.info("enable job [" + dstJob + "]");
+		LOGGER.info("enable job '" + dstJob + "'");
 		response.getEntity().consumeContent();
+
+		LOGGER.info("[ end ] enableJob");
 	}
 
 	/**
 	 * ジョブの設定内容を置き換える。
 	 */
 	private void replaceJobSetting(String dstJob) throws Exception {
+		LOGGER.info("[start] replaceJobSetting");
+
 		// Getリクエスト送信
 		String requestUrl = hudsonUrl + "job" + "/" + dstJob + "/"
 				+ "config.xml";
@@ -134,7 +144,7 @@ public class CopyHudsonJob {
 
 		// Getレスポンス取得
 		LOGGER.info(getResponse.getStatusLine());
-		LOGGER.info("get job setting [" + dstJob + "]");
+		LOGGER.info("get job setting '" + dstJob + "'");
 		String config = EntityUtils.toString(getResponse.getEntity());
 		getResponse.getEntity().consumeContent();
 
@@ -148,7 +158,9 @@ public class CopyHudsonJob {
 
 		// Postレスポンス取得
 		LOGGER.info(postResponse.getStatusLine());
-		LOGGER.info("replace job setting [" + dstJob + "]");
+		LOGGER.info("replace job setting '" + dstJob + "'");
 		postResponse.getEntity().consumeContent();
+
+		LOGGER.info("[ end ] replaceJobSetting");
 	}
 }
